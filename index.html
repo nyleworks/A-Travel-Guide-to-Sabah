@@ -1301,7 +1301,7 @@ html.touch .modes.bar .mode-ex>button{-webkit-backdrop-filter:none;backdrop-filt
           <div class="scale"></div>
           <div class="popup" hidden></div>
         </div>
-        <div class="hint">Lines follow the main roads between towns. Badges show how you travel each stretch: 🚗 road, 🚆 train (dotted), ✈ flight (dotted arc), ⛴ boat (wavy).</div>
+        <div class="hint">Pale lines are Sabah's main roads and the black-and-white line is the railway (Sembulan to Tenom). Your route is drawn on top of them. Badges show how you travel each stretch: 🚗 road, 🚆 train (striped), ✈ flight (dotted arc), ⛴ boat (wavy).</div>
       </div>
     </section>
 
@@ -2350,6 +2350,47 @@ const NODES={};
 DISTRICTS.forEach(d=>NODES[d.name]={name:d.name,lat:d.lat,lng:d.lng});
 NODES[J32.name]=J32;
 const NAMES=Object.keys(NODES);
+/* the shape of each main road between two towns (points along the real highway, approximate), so routes and the map's
+   road layer follow the roads instead of cutting straight across */
+const ROAD_WAY={
+ "Kota Kinabalu|Putatan":[[5.95,116.06]],"Kota Kinabalu|Penampang":[[5.95,116.09]],
+ "Putatan|Papar":[[5.84,116.04],[5.80,116.02],[5.77,115.98]],
+ "Papar|Beaufort":[[5.66,115.90],[5.59,115.87],[5.53,115.85],[5.46,115.79],[5.40,115.76]],
+ "Beaufort|Kuala Penyu":[[5.40,115.70],[5.47,115.64],[5.53,115.61]],
+ "Beaufort|Sipitang":[[5.28,115.70],[5.20,115.64],[5.13,115.58]],
+ "Papar|Keningau":[[5.65,115.90],[5.59,115.88],[5.56,115.95],[5.51,116.03],[5.45,116.10],[5.39,116.15]],
+ "Penampang|Tambunan":[[5.90,116.17],[5.87,116.24],[5.82,116.29],[5.77,116.33],[5.72,116.36]],
+ "Tambunan|Keningau":[[5.60,116.33],[5.52,116.27],[5.44,116.21],[5.38,116.18]],
+ "Keningau|Tenom":[[5.28,116.12],[5.22,116.06],[5.17,116.00]],
+ "Keningau|Nabawan":[[5.26,116.22],[5.17,116.31],[5.10,116.38]],
+ "Nabawan|Kalabakan":[[4.92,116.46],[4.80,116.50],[4.70,116.55],[4.62,116.75],[4.56,116.98],[4.50,117.20],[4.45,117.36]],
+ "Kalabakan|Tawau":[[4.38,117.62],[4.32,117.75],[4.28,117.83]],
+ "Kota Kinabalu|Tuaran":[[6.03,116.11],[6.08,116.15],[6.13,116.20]],
+ "Tuaran|Kota Belud":[[6.22,116.28],[6.27,116.33],[6.31,116.39]],
+ "Kota Belud|Kota Marudu":[[6.40,116.52],[6.44,116.60],[6.47,116.69]],
+ "Kota Marudu|Kudat":[[6.58,116.79],[6.68,116.80],[6.78,116.82]],
+ "Kota Marudu|Pitas":[[6.55,116.85],[6.62,116.93],[6.67,117.00]],
+ "Kota Marudu|Ranau":[[6.38,116.76],[6.25,116.74],[6.12,116.71],[6.02,116.68]],
+ "Tuaran|Ranau":[[6.12,116.27],[6.08,116.35],[6.03,116.43],[6.00,116.50],[5.99,116.56],[5.97,116.61]],
+ "Ranau|Tambunan":[[5.88,116.62],[5.82,116.56],[5.76,116.48],[5.71,116.41]],
+ "Ranau|Telupid":[[5.92,116.76],[5.86,116.86],[5.78,116.95],[5.70,117.04]],
+ "Telupid|Tongod":[[5.52,117.10],[5.40,117.05],[5.30,117.00]],
+ "Telupid|Batu 32 junction":[[5.64,117.25],[5.66,117.40],[5.68,117.55],[5.70,117.70]],
+ "Batu 32 junction|Sandakan":[[5.76,117.93],[5.80,118.03]],
+ "Batu 32 junction|Beluran":[[5.77,117.72],[5.83,117.63]],
+ "Batu 32 junction|Kinabatangan":[[5.64,117.83]],
+ "Kinabatangan|Lahad Datu":[[5.45,117.88],[5.33,117.98],[5.20,118.12],[5.10,118.24]],
+ "Lahad Datu|Kunak":[[4.92,118.30],[4.80,118.28]],
+ "Kunak|Semporna":[[4.62,118.38],[4.55,118.50]],
+ "Kunak|Tawau":[[4.56,118.15],[4.42,118.05],[4.31,117.96]],
+ "Semporna|Tawau":[[4.42,118.45],[4.36,118.25],[4.30,118.05]]
+};
+/* the points of one road from town a to town b (either direction) */
+function roadLine(a,b){const A=NODES[a],B=NODES[b];const f=ROAD_WAY[a+"|"+b],r=ROAD_WAY[b+"|"+a];
+  return[[A.lat,A.lng],...(f||(r?r.slice().reverse():[])),[B.lat,B.lng]]}
+/* a road route through towns, drawn along the roads */
+function viaGeom(via){const out=[];for(let i=1;i<via.length;i++){const L=roadLine(via[i-1],via[i]);out.push(...(i>1?L.slice(1):L))}return out.length?out:via.map(n=>[NODES[n].lat,NODES[n].lng])}
+
 /* all-pairs fastest routes (Floyd–Warshall on time, tracking km and the towns passed) */
 const RT={},RK={},NX={};
 NAMES.forEach(a=>{RT[a]={};RK[a]={};NX[a]={};NAMES.forEach(b=>{RT[a][b]=a===b?0:Infinity;RK[a][b]=0;NX[a][b]=a===b?b:null})});
@@ -2524,7 +2565,7 @@ function travel(p,q,flights,noTrain){
     const out=lp?{...lp,pts:[pt(p),[A.lat,A.lng]]}:null;
     const inn=lq?{...lq,pts:[[B.lat,B.lng],pt(q)]}:null;
     const mid=roadLeg(p.access,q.access);
-    if(mid)mid.pts=mid.via.map(n=>[NODES[n].lat,NODES[n].lng]);
+    if(mid)mid.pts=viaGeom(mid.via);
     best=build([out,mid,inn]);
     /* short hop straight across country, but only where the road network doesn't make a long detour (no crossing the Padas Gorge by car) */
     const netKm=p.access===q.access?0:RK[p.access][q.access];
@@ -2540,8 +2581,8 @@ function travel(p,q,flights,noTrain){
       for(const x of XS)for(const y of YS){if(x===y)continue;
         const tr=railLeg(x,y);if(tr.km<25)continue;
         const r1=roadLeg(p.access,x),r2=roadLeg(y,q.access);
-        if(r1)r1.pts=r1.via.map(n=>[NODES[n].lat,NODES[n].lng]);
-        if(r2)r2.pts=r2.via.map(n=>[NODES[n].lat,NODES[n].lng]);
+        if(r1)r1.pts=viaGeom(r1.via);
+        if(r2)r2.pts=viaGeom(r2.via);
         const c=build([out,r1,tr,r2,inn]);
         const roadKmOnTrain=(r1?r1.km:0)+(r2?r2.km:0);
         if(c.h<best.h*2&&roadKmOnTrain<tr.km&&(!best.legs.some(l=>l.mode==="train")||c.h<best.h))best=c;
@@ -2550,8 +2591,8 @@ function travel(p,q,flights,noTrain){
     if(flights){
       for(const[x,y]of FLIGHTS){
         const r1=roadLeg(p.access,x),r2=roadLeg(y,q.access);
-        if(r1)r1.pts=r1.via.map(n=>[NODES[n].lat,NODES[n].lng]);
-        if(r2)r2.pts=r2.via.map(n=>[NODES[n].lat,NODES[n].lng]);
+        if(r1)r1.pts=viaGeom(r1.via);
+        if(r2)r2.pts=viaGeom(r2.via);
         const fl={mode:"flight",km:km(NODES[x].lat,NODES[x].lng,NODES[y].lat,NODES[y].lng),h:FLIGHT_H+AIRPORT_H,from:x,to:y,pts:[[NODES[x].lat,NODES[x].lng],[NODES[y].lat,NODES[y].lng]]};
         const c=build([out,r1,fl,r2,inn]);
         if(c.h<best.h-1.5)best=c;
@@ -3098,6 +3139,20 @@ const GM_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 const gmBtn=(a,d)=>`<a class="gm" href="${mapsUrl(a,d)}" target="_blank" rel="noopener" aria-label="Open ${esc(a[0])} in Google Maps" title="Open in Google Maps">${GM_ICON}</a>`;
 
 /* ================= map engine (shared by both views) ================= */
+/* the main road network and the railway, drawn under everything else so trip routes sit on real roads and track.
+   Roads: a pale line with a soft dark edge. Railway: a dark line with light sleepers, the classic map style. */
+function netLayer(m){
+  if(typeof ROADS==="undefined")return"";
+  const z=m.view.s,w=z>1400?3.2:z>600?2.4:1.7;
+  const roads=ROADS.map(([a,b])=>m.path(roadLine(a,b))).join("");
+  const rail=m.path(STATIONS.map(n=>STATION_PT[n]));
+  return`<g class="net" pointer-events="none">
+    <path d="${roads}" stroke="rgba(20,34,28,.28)" stroke-width="${(w+1.6).toFixed(1)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${roads}" stroke="rgba(244,236,212,.62)" stroke-width="${w.toFixed(1)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${rail}" stroke="rgba(28,36,34,.75)" stroke-width="${(w+1.2).toFixed(1)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${rail}" stroke="rgba(236,232,220,.9)" stroke-width="${Math.max(1,w-.9).toFixed(1)}" stroke-dasharray="3 3" fill="none" stroke-linejoin="round"/>
+  </g>`;
+}
 const SVG_STYLE=`<style>.gt{font:500 10px var(--f-mono);fill:var(--muted)}.sea-l{font:600 11px var(--f-mono);letter-spacing:.3em;fill:var(--sea-line)}.nb-l{font:600 10px var(--f-mono);letter-spacing:.2em;fill:var(--muted);opacity:.8}.pk-l{font:600 11px var(--f-body);fill:var(--muted)}.ot-l{font:600 11px var(--f-body);fill:var(--muted)}.town-l{font:800 15px var(--f-display);letter-spacing:.06em;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-width:3px}.isl{fill:var(--land);stroke:var(--land-edge);stroke-width:1}.other{fill:var(--other);stroke:var(--land-edge);stroke-width:1;stroke-dasharray:3 2}.se-l{font:700 11px var(--f-mono);letter-spacing:.1em;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-width:3px}.nt-l{font:600 10px var(--f-mono);fill:var(--muted);paint-order:stroke;stroke:var(--land);stroke-width:3px}</style>`;
 function createMap(root,opt){
   const svg=root.querySelector("svg.main"),inset=root.querySelector("svg.inset"),scaleEl=root.querySelector(".scale"),popup=root.querySelector(".popup");
@@ -3151,6 +3206,7 @@ function createMap(root,opt){
     o+=`<path d="${gl}" stroke="var(--grid)" stroke-width="1" fill="none"/>`;
     o+=`<path d="${RIVERS.map(r=>m.path(r)).join("")}" stroke="var(--river)" stroke-width="${s>2000?3:1.8}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
     o+=`<path d="${m.path(RIDGE)}" stroke="var(--land-edge)" stroke-width="1.2" stroke-dasharray="1 5" stroke-linecap="round" fill="none" opacity=".8"/>`;
+    o+=netLayer(m);
     o+=SEAS.map(([n,a,b])=>{const p=xy(a,b);return`<text x="${p.x}" y="${p.y}" class="sea-l" text-anchor="middle">${n}</text>`}).join("");
     o+=NEIGHBOURS.map(([n,a,b])=>{const p=xy(a,b);return`<text x="${p.x}" y="${p.y+(n==="LABUAN"?-12:0)}" class="nb-l" text-anchor="middle">${n}</text>`}).join("");
     o+=PEAKS.map(([n,a,b])=>{const p=xy(a,b);return`<g transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})"><path d="M-6 4L0 -6L6 4Z" fill="var(--land-edge)"/><text x="9" y="4" class="pk-l">${n}</text></g>`}).join("");
@@ -4005,7 +4061,11 @@ function trOverlay(m){
         g+=`<path d="${d}" stroke="${col}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
         if(tot>34){let h=tot/2,pm=P[0];for(const[a,b,len]of seg){if(h<=len){pm={x:a.x+(b.x-a.x)*h/(len||1),y:a.y+(b.y-a.y)*h/(len||1)};break}h-=len}
           g+=legBadge(pm,"⛴️",col)}}
-      else{g+=`<path d="${m.path(l.pts)}" stroke="${col}" stroke-width="3.5" ${l.mode==="train"?'stroke-dasharray="2 5"':""} stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+      else{const pd=m.path(l.pts);
+        g+=`<path d="${pd}" stroke="var(--solid)" stroke-opacity=".85" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+        g+=l.mode==="train"
+          ?`<path d="${pd}" stroke="${col}" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="${pd}" stroke="var(--solid)" stroke-width="1.6" stroke-dasharray="4 5" fill="none" stroke-linejoin="round"/>`
+          :`<path d="${pd}" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
         const pm=midOf(l.pts.map(q=>m.xy(q[0],q[1])),34);
         if(pm)g+=legBadge(pm,l.mode==="train"?"🚆":TX.ground==="bike"?"🏍️":TX.ground==="taxi"?"🚕":"🚗",col)}
     })});
