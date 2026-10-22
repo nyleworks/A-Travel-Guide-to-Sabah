@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>A Travel Guide to Sabah</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#3d5651">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 <meta name="description" content="Explore all 27 districts of Sabah on interactive maps and plan a day-by-day trip with road distances, drive times, boats and flights.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1072,6 +1079,57 @@ html.touch .modes.bar .mode-ex>button{-webkit-backdrop-filter:none;backdrop-filt
 .trip-fresh{animation:tripFresh .45s cubic-bezier(.2,.7,.3,1) both}
 @keyframes tripFresh{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.trip-fresh{animation:none}}
+
+/* ---- seamless on every screen ---- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-tap-highlight-color:transparent}
+.topbar{padding-top:max(8px,env(safe-area-inset-top,0px))}
+html{scroll-padding-top:calc(var(--tbh,64px) + 12px)}
+/* the sticky map column sits just under the sticky bar instead of sliding beneath it */
+.map-col{top:calc(var(--tbh,64px) + 10px)}
+@media (min-width:901px){.map{height:min(74vh,680px,calc(100vh - var(--tbh,64px) - 110px))}}
+/* map: one finger scrolls the page, two fingers move the map (see createMap) */
+.map{touch-action:pan-y;overscroll-behavior:auto}
+.coop{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;
+  font:700 16px/1.35 var(--f-body);color:#fff;background:rgba(16,28,30,.5);opacity:0;pointer-events:none;transition:opacity .25s}
+.coop.on{opacity:1}
+.hint .h-touch{display:none}
+html.touch .hint .h-touch{display:inline}
+html.touch .hint .h-mouse{display:none}
+/* bigger, easier targets for fingers */
+html.touch .ctrl button{width:44px;height:44px;font-size:20px}
+html.touch .chip,html.touch .daytabs button{min-height:40px}
+/* hover looks only where there is a real hover, so taps don't leave buttons stuck highlighted on phones and tablets */
+@media (hover:none){.modes button:hover,.ctrl button:hover,.gm:hover{border-color:var(--line)}.ctrl button:hover{color:var(--ink)}}
+/* tablets (iPad, Android and Galaxy Tab) in portrait: a roomier map */
+@media (min-width:600px) and (max-width:900px){.map{height:min(56vh,560px)}}
+/* phones on their side: keep the map and bar inside the short screen */
+@media (max-height:500px) and (orientation:landscape){
+  .map{height:calc(100svh - var(--tbh,64px) - 40px);min-height:240px}
+  .sign .wrap{padding-block:16px 8px}
+  .sign h1{font-size:clamp(28px,6vh,40px)}
+}
+@media (max-width:480px){.topbar{padding-bottom:6px}}
+/* iPhones zoom the whole page into any field under 16px; keep every field at 16px on touch screens */
+html.touch input:not([type=checkbox]):not([type=radio]),html.touch select,html.touch textarea{font-size:16px!important}
+/* nothing to copy until the trip has places */
+.pitin:has(.emptytrip) .tsum-acts{display:none}
+.jumpfab{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:55;display:inline-flex;align-items:center;gap:8px;
+  padding:12px 22px;border-radius:999px;border:1px solid rgba(255,255,255,.9);background:var(--grain),rgba(240,245,238,.92);color:#24322f;font:700 15px var(--f-body);
+  box-shadow:0 8px 24px rgba(10,20,22,.3);cursor:pointer;animation:fabIn .3s cubic-bezier(.22,.8,.24,1)}
+.jumpfab[hidden]{display:none}
+body:has(#snack.on) .jumpfab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.jumpfab{transition:bottom .3s cubic-bezier(.22,.8,.24,1)}
+@keyframes fabIn{from{opacity:0;transform:translate(-50%,16px)}}
+@media (prefers-reduced-motion:reduce){.jumpfab{animation:none}}
+@media (max-width:480px){
+  /* expense row: name on its own line, then amount and Add side by side */
+  .baddrow{grid-template-columns:minmax(0,1fr) auto}
+  .baddrow>input{grid-column:1/-1}
+  .baddrow button{grid-column:auto}
+}
+/* small captions stay readable over the pale part of the painted sky */
+.hint,.legend,#meta,.intro,.fhint,.pf-sub,footer p{text-shadow:0 1px 2px rgba(10,20,22,.5)}
 </style>
 </head>
 <body>
@@ -1160,7 +1218,7 @@ html.touch .modes.bar .mode-ex>button{-webkit-backdrop-filter:none;backdrop-filt
         <aside class="lore facts glass" id="funFacts" aria-label="Fun facts"></aside>
       </div>
       <div class="legend" id="legend"></div>
-      <div class="hint">Drag to pan · scroll or pinch to zoom · click a pin or place name to open it in the list</div>
+      <div class="hint"><span class="h-mouse">Drag to pan · Ctrl/⌘ + scroll or pinch to zoom · click a pin or place name to open it in the list</span><span class="h-touch">Two fingers to move or zoom the map · tap a pin or place name to open it in the list</span></div>
     </section>
   </div>
 </main>
@@ -1313,6 +1371,7 @@ html.touch .modes.bar .mode-ex>button{-webkit-backdrop-filter:none;backdrop-filt
       </div>
       <div id="itinerary"></div>
     </section>
+    <button type="button" class="jumpfab" id="jumpPlan" hidden>See your plan <span aria-hidden="true">↓</span></button>
     <section class="helpplan" id="helpPlan" hidden aria-label="Help me plan">
         <div id="hpBody" hidden></div>
       </section>
@@ -3019,7 +3078,9 @@ document.addEventListener("click",e=>{
   host.classList.remove("refract");void host.offsetWidth;host.classList.add("refract");clearTimeout(host._rf);host._rf=setTimeout(()=>host.classList.remove("refract"),650);
 });
 /* the bar casts a deeper shadow once it is floating over the page */
-(()=>{const tb=$("#topbar");if(!tb)return;const f=()=>tb.classList.toggle("stuck",tb.getBoundingClientRect().top<=0.5&&scrollY>4);addEventListener("scroll",f,{passive:true});f()})();
+(()=>{const tb=$("#topbar");if(!tb)return;const f=()=>tb.classList.toggle("stuck",tb.getBoundingClientRect().top<=0.5&&scrollY>4);addEventListener("scroll",f,{passive:true});f();
+  /* share the bar's height with the CSS, so the sticky map and jump-to scrolling land just below it */
+  const h=()=>document.documentElement.style.setProperty("--tbh",tb.offsetHeight+"px");h();if(window.ResizeObserver)new ResizeObserver(h).observe(tb);else addEventListener("resize",h)})();
 /* ================= photos (Wikipedia → Wikimedia Commons → district photo) ================= */
 const imgCache=new Map(),searchCache=new Map();
 const actKey=(a,d)=>d.name+"|"+a[0];
@@ -3032,7 +3093,8 @@ const sized=(src,w)=>/\/thumb\//.test(src)?src.replace(/\/(\d+)px-/,"/"+w+"px-")
 const IMG_ERR="this.onerror=null;if(this.dataset.full&&this.src!==this.dataset.full){this.onerror=function(){this.style.visibility='hidden'};this.src=this.dataset.full}else{this.style.visibility='hidden'}";
 const imgTag=(im,cls,w)=>im?`<img class="${cls}" src="${im.g?im.src:sized(im.src,w)}" data-full="${im.src}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="${IMG_ERR}">`:"";
 const BAD=/map|locator|location|flag|seal|logo|coat.of.arms|emblem|diagram|chart|\.svg|\.tiff?|\.pdf|\.djvu|\.webm|\.ogv/i;
-async function getJSON(url){const r=await fetch(url);if(!r.ok)throw new Error(r.status);return r.json()}
+async function getJSON(url,ms){const ac=ms&&window.AbortController?new AbortController():null;const t=ac?setTimeout(()=>ac.abort(),ms):0;
+  try{const r=await fetch(url,ac?{signal:ac.signal}:undefined);if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(t)}}
 async function wikiTitles(titles){
   const want=[...new Set(titles)].filter(t=>!imgCache.has(t));
   for(let k=0;k<want.length;k+=40){
@@ -3259,20 +3321,29 @@ function createMap(root,opt){
   popup.addEventListener("wheel",e=>e.stopPropagation());
   /* pan, zoom, pinch, click: finger events only update the view; drawing happens once per frame (m.quick).
      Letting go of a quick drag keeps the map gliding and slowing down, like native maps. */
-  const pts=new Map();let moved=0,pinch=null,downHit=null,glide=0,vel={x:0,y:0,t:0};
+  const pts=new Map();let moved=0,pinch=null,downHit=null,glide=0,vel={x:0,y:0,t:0},multi=false;
+  /* cooperative gestures, so the map never traps the page: on touch one finger scrolls the page and two fingers move the map;
+     a mouse wheel scrolls the page and Ctrl/⌘ + wheel (or a trackpad pinch) zooms. A short note on the map says so. */
+  const coop=document.createElement("div");coop.className="coop";coop.setAttribute("aria-hidden","true");root.appendChild(coop);let coopT=0;
+  const coopHint=t=>{coop.textContent=t==="touch"?"Use two fingers to move the map":`Hold ${/Mac|iP(hone|ad)/.test(navigator.platform)?"⌘":"Ctrl"} and scroll to zoom the map`;
+    coop.classList.add("on");clearTimeout(coopT);coopT=setTimeout(()=>coop.classList.remove("on"),1300)};
+  root.addEventListener("touchmove",e=>{if(e.touches.length>1||multi)e.preventDefault()},{passive:false});
   const stopGlide=()=>{if(glide){cancelAnimationFrame(glide);glide=0}};
   svg.addEventListener("pointerdown",e=>{const h=e.target.closest("[data-hit]");downHit=h?h.dataset.hit:null;try{svg.setPointerCapture(e.pointerId)}catch(_){}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0;
     stopGlide();clearTimeout(settleT);vel={x:0,y:0,t:performance.now()};
-    if(pts.size===2){const[a,b]=[...pts.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),s:m.view.s}}root.classList.add("dragging");cancelAnimationFrame(raf)});
+    if(pts.size===2){const[a,b]=[...pts.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),s:m.view.s,mx:(a.x+b.x)/2,my:(a.y+b.y)/2};multi=true;coop.classList.remove("on")}root.classList.add("dragging");cancelAnimationFrame(raf)});
   svg.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;const prev=pts.get(e.pointerId),nx=e.clientX,ny=e.clientY;pts.set(e.pointerId,{x:nx,y:ny});
-    if(pts.size===1){const dx=nx-prev.x,dy=ny-prev.y;if(!dx&&!dy)return;moved+=Math.abs(dx)+Math.abs(dy);m.view.lng-=dx/(m.view.s*C);m.view.lat+=dy/m.view.s;
+    if(pts.size===1){const dx=nx-prev.x,dy=ny-prev.y;if(!dx&&!dy)return;moved+=Math.abs(dx)+Math.abs(dy);
+      if(e.pointerType==="touch"&&!multi){if(moved>10)coopHint("touch");return}
+      m.view.lng-=dx/(m.view.s*C);m.view.lat+=dy/m.view.s;
       /* smoothed finger speed (px per ms), for the glide after letting go */
       const t=performance.now(),dt=Math.max(1,t-vel.t);vel={x:vel.x*.6+dx/dt*.4,y:vel.y*.6+dy/dt*.4,t}}
-    else if(pts.size===2&&pinch){const[a,b]=[...pts.values()],d=Math.hypot(a.x-b.x,a.y-b.y),r=root.getBoundingClientRect();moved+=10;vel={x:0,y:0,t:performance.now()};zoomAt((a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top,clampS(pinch.s*d/pinch.d)/m.view.s)}
+    else if(pts.size===2&&pinch){const[a,b]=[...pts.values()],d=Math.hypot(a.x-b.x,a.y-b.y),r=root.getBoundingClientRect();moved+=10;vel={x:0,y:0,t:performance.now()};const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      zoomAt(mx-r.left,my-r.top,clampS(pinch.s*d/pinch.d)/m.view.s);m.view.lng-=(mx-pinch.mx)/(m.view.s*C);m.view.lat+=(my-pinch.my)/m.view.s;pinch.mx=mx;pinch.my=my}
     m.quick()});
   const end=e=>{if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);
     if(pts.size===1){/* one finger left after a pinch: carry on panning from where it is */pinch=null;return}
-    if(pts.size)return;pinch=null;
+    if(pts.size)return;pinch=null;multi=false;
     const sp=Math.hypot(vel.x,vel.y),fresh=performance.now()-vel.t<80;
     if(moved>6&&fresh&&sp>.25&&!reduced){
       let vx=vel.x,vy=vel.y,last=performance.now();
@@ -3284,8 +3355,8 @@ function createMap(root,opt){
   svg.addEventListener("pointerup",end);svg.addEventListener("pointercancel",end);svg.addEventListener("lostpointercapture",end);
   svg.addEventListener("click",()=>{if(moved>6)return;opt.onClick(downHit)});
   /* wheel and trackpad: zoom every frame, redraw sharply once the wheel stops */
-  svg.addEventListener("wheel",e=>{e.preventDefault();stopGlide();const r=root.getBoundingClientRect();
-    const dy=e.deltaMode===1?e.deltaY*16:e.deltaY;zoomAt(e.clientX-r.left,e.clientY-r.top,Math.exp(-dy*(e.ctrlKey?.01:.0015)));
+  svg.addEventListener("wheel",e=>{if(!e.ctrlKey&&!e.metaKey){coopHint("wheel");return}e.preventDefault();stopGlide();const r=root.getBoundingClientRect();
+    const dy=e.deltaMode===1?e.deltaY*16:e.deltaY;zoomAt(e.clientX-r.left,e.clientY-r.top,Math.exp(-dy*(Math.abs(dy)<50?.01:.0025)));
     root.classList.add("dragging");m.quick();clearTimeout(settleT);settleT=setTimeout(()=>{root.classList.remove("dragging");if(!pts.size&&!glide)m.render()},140)},{passive:false});
   /* stop iOS Safari's own page pinch/zoom gestures from fighting the map */
   ["gesturestart","gesturechange","gestureend"].forEach(t=>root.addEventListener(t,e=>e.preventDefault(),{passive:false}));
@@ -4612,7 +4683,7 @@ function renderBudget(anim){
   if(!$("#bLines"))return;
   initBudget();
   const M=budgetModel();
-  if(!M){$("#bTotal").innerHTML=`<p class="pf-sub">Add places to your trip first (in Explore districts or Plan a trip), then come back to see what it costs.</p>`;return}
+  if(!M){$("#bTotal").innerHTML=`<p class="pf-sub">Add places to your trip first (in Explore districts or Plan a trip), then come back to see what it costs.</p>`;renderConv();return}
   const H=BG.home,showH=H!=="MYR";
   // trip line
   const stays=[M.T.cfg.start];M.T.days.forEach(d=>{if(d.overnight){const s=stayAt(d.overnight);if(stays[stays.length-1]!==s)stays.push(s)}});if(stays[stays.length-1]!==M.T.cfg.end)stays.push(M.T.cfg.end);
@@ -4660,9 +4731,9 @@ let rateBusy=false;
 async function loadRates(){
   if(rateBusy)return;rateBusy=true;
   const tries=[
-    ["Coinbase",async()=>{const j=await getJSON("https://api.coinbase.com/v2/exchange-rates?currency=MYR");const r={};Object.entries(j.data.rates).forEach(([k,v])=>r[k]=parseFloat(v));return r}],
-    ["open.er-api.com",async()=>{const j=await getJSON("https://open.er-api.com/v6/latest/MYR");if(j.result!=="success")throw 0;return j.rates}],
-    ["the fawazahmed0 currency feed",async()=>{const j=await getJSON("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/myr.json");const r={};Object.entries(j.myr).forEach(([k,v])=>r[k.toUpperCase()]=v);return r}],
+    ["Coinbase",async()=>{const j=await getJSON("https://api.coinbase.com/v2/exchange-rates?currency=MYR",6000);const r={};Object.entries(j.data.rates).forEach(([k,v])=>r[k]=parseFloat(v));return r}],
+    ["open.er-api.com",async()=>{const j=await getJSON("https://open.er-api.com/v6/latest/MYR",6000);if(j.result!=="success")throw 0;return j.rates}],
+    ["the fawazahmed0 currency feed",async()=>{const j=await getJSON("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/myr.json",6000);const r={};Object.entries(j.myr).forEach(([k,v])=>r[k.toUpperCase()]=v);return r}],
   ];
   for(const[name,fn]of tries){
     try{const r=await fn();if(!r||!r.USD)throw 0;CURS.forEach(([c])=>{if(r[c])RATES.rates[c]=+r[c]});RATES.rates.MYR=1;RATES.live=true;RATES.at=new Date();RATES.src=name;break}catch(e){}
@@ -5168,6 +5239,13 @@ function setMode(m2,push){
   else if(push&&EX.cur){try{history.replaceState(null,"","#"+EX.cur.slug)}catch(e){}}
 }
 $(".modes").addEventListener("click",e=>{const b=e.target.closest("[data-mode]");if(b)setMode(b.dataset.mode,true)});
+/* phones and tablets stack the trip form above the map and day plan, so while the form fills the screen a pill jumps down to the result */
+(()=>{const fab=$("#jumpPlan"),form=$(".mode-plan .pform"),pm=$(".pmap");if(!fab||!form||!pm)return;let q=0;
+  const f=()=>{q=0;const fr=form.getBoundingClientRect(),mr=pm.getBoundingClientRect();
+    fab.hidden=!(mode==="plan"&&innerWidth<=900&&!$("#itinerary .emptytrip")&&fr.bottom>innerHeight*.5&&mr.top>innerHeight*.8)};
+  const go=()=>{if(!q)q=requestAnimationFrame(f)};addEventListener("scroll",go,{passive:true});addEventListener("resize",go);
+  $$(".modes [data-mode]").forEach(b=>b.addEventListener("click",()=>setTimeout(go,60)));new MutationObserver(go).observe($("#itinerary"),{childList:true});
+  fab.onclick=()=>{pm.scrollIntoView({behavior:reduced?"auto":"smooth",block:"start"});fab.hidden=true}})();
 updateBadge();
 let startSlug="kota-kinabalu",startMode="explore";
 try{const h=location.hash.replace("#","");if(h==="plan")startMode="plan";else if(h==="budget")startMode="budget";else if(DISTRICTS.some(d=>d.slug===h))startSlug=h}catch(e){}
@@ -5257,5 +5335,5 @@ window.GUIDE_READY=true;
 })();
 
 </script>
-</body>
-</html>
+
+</body></html>
